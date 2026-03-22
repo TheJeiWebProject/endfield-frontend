@@ -376,7 +376,13 @@ const totalPower = computed(() => {
 
 // 生命周期
 onMounted(() => {
+  console.log('[Canvas] onMounted called')
+  console.log('[Canvas] canvasRef.value:', canvasRef.value)
+  console.log('[Canvas] dataStore.items.length:', dataStore.items.length)
+  console.log('[Canvas] dataStore.loading:', dataStore.loading)
+  
   if (canvasRef.value && dataStore.items.length > 0) {
+    console.log('[Canvas] Initializing canvas...')
     // 默认加载枢纽区布局
     selectedRegion.value = 'tundra_hub'
     const hubRegion = tundraRegions.find(r => r.id === 'tundra_hub')
@@ -397,7 +403,10 @@ onMounted(() => {
     }
     
     // 加载枢纽区布局（在画布初始化后）
+    console.log('[Canvas] Calling onRegionChange...')
     onRegionChange()
+  } else {
+    console.warn('[Canvas] Canvas not initialized. canvasRef:', !!canvasRef.value, 'items:', dataStore.items.length)
   }
 })
 
