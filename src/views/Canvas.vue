@@ -127,7 +127,17 @@
 
     <!-- 画布区域 -->
     <div class="canvas-wrapper">
+      <!-- 2D/3D 视图切换按钮 -->
+      <button
+        class="view-toggle-btn"
+        @click="toggleViewMode"
+      >
+        {{ viewMode === '2d' ? '切换到 3D 视图' : '切换到 2D 视图' }}
+      </button>
+
+      <!-- 2D 画布 -->
       <canvas
+        v-show="viewMode === '2d'"
         id="gameCanvas"
         ref="canvasRef"
         tabindex="0"
@@ -139,6 +149,16 @@
         @dragleave="handleDragLeave"
         @drop="handleDrop"
         @keydown="handleKeyDown"
+      />
+
+      <!-- 3D 场景 -->
+      <ThreeScene
+        v-show="viewMode === '3d'"
+        ref="threeSceneRef"
+        :visible="viewMode === '3d'"
+        :grid-data="gridData3D"
+        :active-layer="activeLayer"
+        @scene-ready="handleSceneReady"
       />
 
       <!-- 工具栏 -->
@@ -287,6 +307,7 @@ import SettingsPanel from '../components/canvas/SettingsPanel.vue'
 import BlueprintPanel from '../components/canvas/BlueprintPanel.vue'
 import LoadPanel from '../components/canvas/LoadPanel.vue'
 import RecipePanel from '../components/canvas/RecipePanel.vue'
+import ThreeScene from '../components/canvas/ThreeScene.vue'
 
 // ==================== Store ====================
 const dataStore = useDataStore()
@@ -311,6 +332,9 @@ const showBlueprintPanel = ref(false)
 const showLoadPanel = ref(false)
 const showInfoPanel = ref(true)
 const showRecipePanel = ref(false)
+const viewMode = ref('2d')
+const threeSceneRef = ref(null)
+const gridData3D = ref({})
 
 // ==================== 画布状态 ====================
 const gridCols = ref(60)
@@ -534,6 +558,7 @@ onMounted(() => {
   }
 
   initializeCanvas()
+  
   const blueprintRecipe = route.query.blueprintRecipe
   if (blueprintRecipe) {
     window.history.replaceState({}, '', '/canvas')
@@ -743,7 +768,17 @@ onUnmounted(() => {
 
 // ==================== Watchers ====================
 watch([sidebarCollapsed, rightSidebarCollapsed], () => {
+  // 触发窗口 resize 事件
   setTimeout(() => window.dispatchEvent(new Event('resize')), 300)
+  
+  // 重新调整背景 canvas 大小
+  const canvas = document.getElementById('canvasBgCanvas')
+  if (canvas) {
+    const container = canvas.parentElement
+    canvas.width = container.offsetWidth
+    canvas.height = container.offsetHeight
+    generateBackgroundWithCanvas(canvas)
+  }
 })
 
 watch(currentTool, (newTool) => {
@@ -757,6 +792,12 @@ watch(() => dataStore.loading, (newLoading) => {
     initializeCanvas()
   }
 }, { immediate: true })
+
+watch(() => gameCanvas.value?.layers?.machines, () => {
+  if (viewMode.value === '3d') {
+    updateGridData3D()
+  }
+}, { deep: true })
 
 // ==================== 初始化 ====================
 function initializeCanvas() {
@@ -814,6 +855,53 @@ function initCanvas(regionId) {
 
 function updateSelectedItem() {
   selectedItem.value = gameCanvas.value?.selectedItem
+}
+
+function toggleViewMode() {
+  viewMode.value = viewMode.value === '2d' ? '3d' : '2d'
+  
+  if (viewMode.value === '3d') {
+    updateGridData3D()
+  }
+}
+
+function handleSceneReady({ scene, camera, renderer }) {
+  console.log('[Canvas] 3D scene ready')
+}
+
+function updateGridData3D() {
+  if (!gameCanvas.value) return
+  
+  const machines = gameCanvas.value.layers?.machines || []
+  const belts = gameCanvas.value.layers?.belts || []
+  const pipes = gameCanvas.value.layers?.pipes || []
+  
+  gridData3D.value = {
+    sizeX: gridCols.value,
+    sizeY: gridRows.value,
+    grids: machines.map(machine => ({
+      x: machine.x,
+      y: machine.y,
+      content: {
+        id: machine.id,
+        name: machine.name,
+        type: 'machine',
+        category: getMachineCategory(machine.id)
+      }
+    }))
+  }
+}
+
+function getMachineCategory(machineId) {
+  const item = dataStore.items.find(i => i.id === machineId)
+  if (!item) return 'other'
+  
+  if (item.category === 'gen-power') return 'producer'
+  if (item.category === 'machine') return 'processor'
+  if (['belt-and-pipe', 'logistics'].includes(item.category)) return 'logistics'
+  if (item.category === 'storage') return 'storage'
+  
+  return 'other'
 }
 
 // ==================== 地区切换 ====================
@@ -1787,6 +1875,35 @@ function deleteBlueprint(blueprint) {
   flex: 1;
   position: relative;
   overflow: hidden;
+}
+
+.view-toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  padding: 8px 16px;
+  background: #e94560;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+  background: #ff6b6b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 #gameCanvas {

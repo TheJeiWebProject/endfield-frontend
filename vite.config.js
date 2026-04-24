@@ -21,11 +21,15 @@ export default defineConfig({
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
+        manualChunks: {
+          'three-vendor': ['three'],
+          'three-controls': ['three/examples/jsm/controls/OrbitControls.js'],
+        },
       },
     },
     cssCodeSplit: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
     include: ['vue', 'vue-router', 'pinia'],
