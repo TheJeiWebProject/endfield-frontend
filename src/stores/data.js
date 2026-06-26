@@ -8,6 +8,7 @@ export const useDataStore = defineStore('data', () => {
   const loading = ref(true)
   const loadingFile = ref('')
   const loadingProgress = ref(0)
+  const loadingResources = ref([])
   const error = ref(null)
   const combinedIconUrls = ref({})
 
@@ -63,30 +64,53 @@ export const useDataStore = defineStore('data', () => {
   async function loadData() {
     loading.value = true
     error.value = null
+    loadingResources.value = []
     loadingFile.value = 'data.json'
     loadingProgress.value = 0
 
+    // 添加资源条目
+    addResource('data.json', '核心数据', 'loading')
+    addResource('endfield_blueprints.json', '蓝图数据', 'pending')
+    addResource('combined_icons', '组合图标', 'pending')
+
     try {
+      updateResource('data.json', 'loading', 30)
       loadingProgress.value = 30
-      // 加载主数据
+
       const response = await fetch('/data/data.json')
       data.value = await response.json()
-      
-      loadingProgress.value = 60
-      // 加载蓝图数据
+      updateResource('data.json', 'done', 100)
+
+      loadingProgress.value = 50
+      updateResource('endfield_blueprints.json', 'loading', 50)
       await loadBlueprints()
-      
-      loadingProgress.value = 100
-      
-      // 预加载组合图标
+      updateResource('endfield_blueprints.json', 'done', 100)
+
+      loadingProgress.value = 75
+      updateResource('combined_icons', 'loading', 60)
       await preloadCombinedIcons()
+      updateResource('combined_icons', 'done', 100)
+
+      loadingProgress.value = 100
     } catch (err) {
       error.value = err.message
       console.error('Failed to load data:', err)
     } finally {
       setTimeout(() => {
         loading.value = false
-      }, 300)
+      }, 500)
+    }
+  }
+
+  function addResource(name, displayName, status) {
+    loadingResources.value.push({ name, displayName, status, percent: 0 })
+  }
+
+  function updateResource(name, status, percent) {
+    const r = loadingResources.value.find(r => r.name === name)
+    if (r) {
+      r.status = status
+      r.percent = percent
     }
   }
 
@@ -228,6 +252,7 @@ export const useDataStore = defineStore('data', () => {
     loading,
     loadingFile,
     loadingProgress,
+    loadingResources,
     error,
     items,
     recipes,

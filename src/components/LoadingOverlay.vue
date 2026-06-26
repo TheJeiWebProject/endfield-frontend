@@ -40,10 +40,25 @@
         <span>{{ i18n.t('loading.text') }}</span>
       </div>
 
-      <!-- 文件信息 -->
-      <div class="loading-file" v-if="loadingText !== i18n.t('loading.text')">
-        <span class="file-icon">&#9608;</span>
-        <span>{{ loadingText }}</span>
+      <!-- 资源加载列表 -->
+      <div class="resource-list">
+        <div
+          v-for="res in resources"
+          :key="res.name"
+          class="resource-item"
+          :class="res.status"
+        >
+          <span class="resource-icon">
+            <span v-if="res.status === 'loading'" class="icon-spin">&#9696;</span>
+            <span v-else-if="res.status === 'done'" class="icon-done">&#10003;</span>
+            <span v-else class="icon-pending">&#9679;</span>
+          </span>
+          <span class="resource-name">{{ res.displayName }}</span>
+          <span class="resource-file">{{ res.name }}</span>
+          <span class="resource-bar">
+            <span class="resource-fill" :style="{ width: `${res.percent}%` }"></span>
+          </span>
+        </div>
       </div>
 
       <!-- 进度条 -->
@@ -79,12 +94,7 @@ const i18n = useI18nStore()
 
 const show = computed(() => dataStore.loading)
 const progress = computed(() => dataStore.loadingProgress)
-const loadingText = computed(() => {
-  const file = dataStore.loadingFile
-  const percent = dataStore.loadingProgress
-  const text = i18n.currentLang === 'en' ? 'Loading' : '加载中'
-  return file ? `${text}: ${file} (${percent}%)` : text
-})
+const resources = computed(() => dataStore.loadingResources || [])
 
 // 轮播背景
 const bgImages = [
@@ -292,27 +302,87 @@ onUnmounted(() => {
   50% { opacity: 1; }
 }
 
-/* 文件信息 */
-.loading-file {
+/* 资源加载列表 */
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 320px;
+  max-width: 420px;
+}
+
+.resource-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #E8EEF4;
-  font-size: 0.78rem;
-  font-family: 'Consolas', 'Monaco', monospace;
-  background: rgba(4, 8, 16, 0.7);
-  backdrop-filter: blur(8px);
-  padding: 0.4rem 0.9rem;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(4, 8, 16, 0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 212, 255, 0.1);
   border-radius: 4px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  max-width: 360px;
-  word-break: break-all;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  transition: border-color 0.3s;
 }
-.file-icon {
-  color: #00D4FF;
-  font-size: 0.7rem;
-  animation: statusBlink 0.6s ease-in-out infinite;
+.resource-item.loading {
+  border-color: rgba(0, 212, 255, 0.25);
+}
+.resource-item.done {
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+.resource-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.icon-pending { color: #4A5E73; font-size: 6px; }
+.icon-spin { color: #00D4FF; animation: spin 1s linear infinite; }
+.icon-done { color: #00FF88; font-size: 12px; font-weight: bold; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.resource-name {
+  color: #E8EEF4;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.resource-item.done .resource-name {
+  color: #7A8FA6;
+}
+
+.resource-file {
+  flex: 1;
+  color: #4A5E73;
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resource-bar {
+  width: 60px;
+  height: 3px;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.resource-fill {
+  display: block;
+  height: 100%;
+  background: #00D4FF;
+  border-radius: 3px;
+  transition: width 0.4s ease-out;
+}
+.resource-item.done .resource-fill {
+  background: #00FF88;
 }
 
 /* 进度条 */
